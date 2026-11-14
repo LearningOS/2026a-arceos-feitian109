@@ -67,6 +67,14 @@ impl DirNode {
         children.remove(name);
         Ok(())
     }
+
+    /// Rename a node by the given name in this directory.
+    pub fn rename_node(&self, old_name: &str, new_name: &str) -> VfsResult {
+        let mut children = self.children.write();
+        let node = children.remove(old_name).ok_or(VfsError::NotFound)?;
+        children.insert(new_name.into(), node);
+        Ok(())
+    }
 }
 
 impl VfsNodeOps for DirNode {
@@ -162,6 +170,49 @@ impl VfsNodeOps for DirNode {
             Err(VfsError::InvalidInput) // remove '.' or '..
         } else {
             self.remove_node(name)
+        }
+    }
+
+    // Only support rename, NOT move
+    fn rename(&self, src_path: &str, dst_path: &str) -> VfsResult {
+        log::debug!("rename at ramfs: {} to {}", src_path, dst_path);
+        let (name, rest) = split_path(src_path);
+        let (new_name, new_rest) = split_path(dst_path);
+        match (rest, new_rest) {
+            (Some(rest), Some(new_rest)) => {
+                if name != new_name {
+                    return Err(VfsError::Unsupported);
+                }
+                match name {
+                    "" | "." => self.rename(rest, new_rest),
+                    ".." => self
+                        .parent()
+                        .ok_or(VfsError::NotFound)?
+                        .rename(rest, new_rest),
+                    _ => {
+                        let subdir = self
+                            .children
+                            .read()
+                            .get(name)
+                            .ok_or(VfsError::NotFound)?
+                            .clone();
+                        subdir.rename(rest, new_rest)
+                    }
+                }
+            }
+            (None, None) => {
+                if name.is_empty()
+                    || name == "."
+                    || name == ".."
+                    || new_name.is_empty()
+                    || new_name == "."
+                    || new_name == ".."
+                {
+                    return Err(VfsError::Unsupported);
+                }
+                self.rename_node(name, new_name)
+            }
+            _ => Err(VfsError::Unsupported),
         }
     }
 
