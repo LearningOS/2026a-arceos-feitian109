@@ -1,15 +1,14 @@
 #![allow(dead_code)]
 
-use core::ffi::{c_void, c_char, c_int};
-use std::vec;
-use axhal::arch::TrapFrame;
-use axhal::trap::{register_trap_handler, SYSCALL};
-use axerrno::LinuxError;
-use axtask::current;
-use axtask::TaskExtRef;
-use axhal::paging::MappingFlags;
 use arceos_posix_api as api;
-use memory_addr::{align_up_4k, VirtAddr, VirtAddrRange};
+use axerrno::LinuxError;
+use axhal::arch::TrapFrame;
+use axhal::paging::MappingFlags;
+use axhal::trap::{register_trap_handler, SYSCALL};
+use axtask::{current, TaskExtRef};
+use core::ffi::{c_char, c_int, c_void};
+use memory_addr::{align_up_4k, VirtAddrRange};
+use std::vec;
 
 const SYS_IOCTL: usize = 29;
 const SYS_OPENAT: usize = 56;
@@ -145,28 +144,28 @@ fn sys_mmap(
     syscall_body!(sys_mmap, {
         // Assume flag is MAP_PRIVATE and no offset
         let curr = current();
-        let mut aspace = curr.task_ext().aspace.lock();
+        let mut uspace = curr.task_ext().aspace.lock();
         let size = align_up_4k(length);
         let start = if addr.is_null() {
-            // Should reconsider find range
-            aspace
+            uspace
                 .find_free_area(
-                    VirtAddr::from(0),
+                    uspace.base(),
                     size,
-                    VirtAddrRange::from_start_size(VirtAddr::from(0), 0x2000),
+                    VirtAddrRange::new(uspace.base(), uspace.end()),
                 )
                 .ok_or(LinuxError::ENOMEM)?
         } else {
             unsafe { *addr }.into()
         };
         let mmap_prot = MmapProt::from_bits(prot).ok_or(LinuxError::EINVAL)?;
-        aspace
+        uspace
             .map_alloc(start, size, mmap_prot.into(), true)
             .unwrap();
-        if let Some(file) = api::get_file_like(fd).ok() {
-            let mut buf = vec![0u8; size as usize];
+        if fd >= 0 {
+            let mut buf = vec![0u8; size];
+            let file = api::get_file_like(fd)?;
             file.read(&mut buf)?;
-            aspace.write(start, &buf).unwrap();
+            uspace.write(start, &buf).unwrap();
         }
         Ok(start.as_usize())
     })
