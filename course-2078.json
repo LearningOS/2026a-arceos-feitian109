@@ -2,8 +2,8 @@
   "schema": 1,
   "courseId": 2078,
   "repository": "LearningOS/2026a-arceos-feitian109",
-  "commit": "95dfacb296da224d2070132e1ad4a51049f6fb12",
-  "score": 400,
+  "commit": "2a358d4f2466e70bb3ee21f83b1a27404df7e73a",
+  "score": 500,
   "totalScore": 600,
   "exercises": [
     {
@@ -37,22 +37,22 @@
     {
       "name": "sys_map",
       "max": 100,
-      "score": 0,
-      "status": "fail",
+      "score": 100,
+      "status": "pass",
       "exitCode": 0
     },
     {
       "name": "simple_hv",
       "max": 100,
       "score": 0,
-      "status": "timeout",
-      "exitCode": 124
+      "status": "fail",
+      "exitCode": 0
     }
   ],
   "student": "feitian109",
-  "runId": "43579889556",
+  "runId": "44334341584",
   "runAttempt": "1",
   "upload": {
-    "status": "accepted"
+    "status": "pending"
   }
 }
